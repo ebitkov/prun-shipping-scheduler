@@ -32,16 +32,20 @@ final class ApiController extends AbstractController
 
                 $planets = $fioApiClient->getPlayerPlanets();
 
-                $send('progress', \count($planets) . ' Planeten gefunden');
+                $send('planets', $planets);
 
                 foreach ($planets as $planetId) {
-                    $send('progress', "Analysiere {$planetId}...");
+                    $send('planet-active', $planetId);
 
                     $tasks = $shippingCalculator->calculateForPlanet($planetId);
 
+                    $planetName = $planetId;
                     if (!empty($tasks)) {
+                        $planetName = $tasks[0]->planetName;
                         $send('tasks', array_map($this->serializeTask(...), $tasks));
                     }
+
+                    $send('planet-done', ['id' => $planetId, 'name' => $planetName]);
                 }
 
                 $send('progress', 'Lade Marktpreise...');

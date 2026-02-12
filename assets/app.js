@@ -139,7 +139,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const modal = document.getElementById('xit-act-modal');
     const copyBtn = document.getElementById('xit-act-copy');
     const loadingEl = document.getElementById('loading');
-    const loadingText = loadingEl.querySelector('.loading__text');
 
     // Modal controls
     const closeModal = () => modal.classList.add('modal--hidden');
@@ -164,11 +163,53 @@ document.addEventListener('DOMContentLoaded', () => {
     // SSE connection
     const allTasks = [];
     let prices = {};
+    const progressList = document.getElementById('planet-progress');
 
     const source = new EventSource('/api/dashboard/stream');
 
+    source.addEventListener('planets', (e) => {
+        const planetIds = JSON.parse(e.data);
+        progressList.innerHTML = '';
+        for (const id of planetIds) {
+            const li = document.createElement('li');
+            li.className = 'planet-progress__item';
+            li.dataset.planetId = id;
+            li.innerHTML = `<span class="planet-progress__icon">\u00b7</span><span>${id}</span>`;
+            progressList.appendChild(li);
+        }
+    });
+
+    source.addEventListener('planet-active', (e) => {
+        const planetId = JSON.parse(e.data);
+        const li = progressList.querySelector(`[data-planet-id="${CSS.escape(planetId)}"]`);
+        if (li) {
+            li.classList.add('planet-progress__item--active');
+            li.querySelector('.planet-progress__icon').outerHTML =
+                '<span class="planet-progress__spinner"></span>';
+        }
+    });
+
+    source.addEventListener('planet-done', (e) => {
+        const { id, name } = JSON.parse(e.data);
+        const li = progressList.querySelector(`[data-planet-id="${CSS.escape(id)}"]`);
+        if (li) {
+            li.className = 'planet-progress__item planet-progress__item--done';
+            li.innerHTML = `<span class="planet-progress__icon">\u2713</span><span>${name}</span>`;
+        }
+    });
+
     source.addEventListener('progress', (e) => {
-        loadingText.textContent = JSON.parse(e.data);
+        const msg = JSON.parse(e.data);
+        // Show "Lade Marktpreise..." as an extra item in the progress list
+        if (msg === 'Lade Marktpreise...') {
+            let pricesLi = progressList.querySelector('.planet-progress__prices');
+            if (!pricesLi) {
+                pricesLi = document.createElement('li');
+                pricesLi.className = 'planet-progress__prices planet-progress__prices--active';
+                pricesLi.innerHTML = '<span class="planet-progress__spinner"></span><span>Marktpreise</span>';
+                progressList.appendChild(pricesLi);
+            }
+        }
     });
 
     source.addEventListener('tasks', (e) => {
@@ -178,6 +219,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     source.addEventListener('prices', (e) => {
         prices = JSON.parse(e.data);
+        const pricesLi = progressList.querySelector('.planet-progress__prices');
+        if (pricesLi) {
+            pricesLi.className = 'planet-progress__prices planet-progress__prices--done';
+            pricesLi.innerHTML = '<span class="planet-progress__icon">\u2713</span><span>Marktpreise</span>';
+        }
     });
 
     source.addEventListener('done', () => {
@@ -188,12 +234,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     source.addEventListener('error', (e) => {
         source.close();
-        // SSE error event may have data (our custom error) or not (connection error)
         if (e.data) {
-            loadingText.textContent = 'Fehler: ' + JSON.parse(e.data);
+            progressList.innerHTML = `<li class="planet-progress__item" style="color: #e55">Fehler: ${JSON.parse(e.data)}</li>`;
         } else {
-            loadingText.textContent = 'Verbindungsfehler';
+            progressList.innerHTML = '<li class="planet-progress__item" style="color: #e55">Verbindungsfehler</li>';
         }
-        loadingEl.querySelector('.loading__spinner').remove();
     });
 });
