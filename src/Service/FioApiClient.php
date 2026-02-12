@@ -8,9 +8,15 @@ use App\Dto\ProductionOrder;
 use App\Dto\RecipeIO;
 use App\Dto\Storage;
 use App\Dto\StorageItem;
+use Psr\Cache\InvalidArgumentException;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
+use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
@@ -40,8 +46,8 @@ final class FioApiClient implements FioApiClientInterface
     private HttpClientInterface $httpClient;
 
     public function __construct(
-        private readonly CacheInterface $fioStaticDataCache,
-        private readonly CacheInterface $fioDynamicDataCache,
+        private readonly CacheInterface $fioStaticData,
+        private readonly CacheInterface $fioDynamicData,
         private readonly string $fioBaseUrl,
         private readonly string $fioApiKey,
         private readonly string $fioUsername,
@@ -51,10 +57,11 @@ final class FioApiClient implements FioApiClientInterface
 
     /**
      * @return Material[]
+     * @throws InvalidArgumentException
      */
     public function getAllMaterials(): array
     {
-        return $this->fioStaticDataCache->get('fio_all_materials', function (ItemInterface $item): array {
+        return $this->fioStaticData->get('fio_all_materials', function (ItemInterface $item): array {
             /** @var list<MaterialData> $data */
             $data = $this->request('GET', '/material/allmaterials');
 
@@ -72,10 +79,11 @@ final class FioApiClient implements FioApiClientInterface
 
     /**
      * @return list<string> planet natural IDs
+     * @throws InvalidArgumentException
      */
     public function getPlayerPlanets(): array
     {
-        return $this->fioDynamicDataCache->get('fio_player_planets', function (ItemInterface $item): array {
+        return $this->fioDynamicData->get('fio_player_planets', function (ItemInterface $item): array {
             /** @var list<string> $data */
             $data = $this->request('GET', "/production/planets/{$this->fioUsername}", auth: true);
 
@@ -85,12 +93,13 @@ final class FioApiClient implements FioApiClientInterface
 
     /**
      * @return ProductionLine[]
+     * @throws InvalidArgumentException
      */
     public function getProductionLines(string $planet): array
     {
         $cacheKey = 'fio_production_' . str_replace(['{', '}', '(', ')', '/', '\\', '@', ':'], '_', $planet);
 
-        return $this->fioDynamicDataCache->get($cacheKey, function (ItemInterface $item) use ($planet): array {
+        return $this->fioDynamicData->get($cacheKey, function (ItemInterface $item) use ($planet): array {
             $response = $this->requestRaw(
                 'GET',
                 "/production/{$this->fioUsername}/{$planet}",
@@ -108,11 +117,14 @@ final class FioApiClient implements FioApiClientInterface
         });
     }
 
+    /**
+     * @throws InvalidArgumentException
+     */
     public function getStorage(string $planet): Storage
     {
         $cacheKey = 'fio_storage_' . str_replace(['{', '}', '(', ')', '/', '\\', '@', ':'], '_', $planet);
 
-        return $this->fioDynamicDataCache->get($cacheKey, function (ItemInterface $item) use ($planet): Storage {
+        return $this->fioDynamicData->get($cacheKey, function (ItemInterface $item) use ($planet): Storage {
             $response = $this->requestRaw(
                 'GET',
                 "/storage/{$this->fioUsername}/{$planet}",
@@ -186,12 +198,21 @@ final class FioApiClient implements FioApiClientInterface
 
     /**
      * @return array<mixed>
+     *
+     * @throws TransportExceptionInterface
+     * @throws ClientExceptionInterface
+     * @throws DecodingExceptionInterface
+     * @throws RedirectionExceptionInterface
+     * @throws ServerExceptionInterface
      */
     private function request(string $method, string $url, bool $auth = false): array
     {
         return $this->requestRaw($method, $url, $auth)->toArray();
     }
 
+    /**
+     * @throws TransportExceptionInterface
+     */
     private function requestRaw(
         string $method,
         string $url,
