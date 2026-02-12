@@ -1,0 +1,31 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Registrieren{% endblock %}
+
+{% block body %}
+<div class="auth-container">
+    <h1>Shipping Schedule</h1>
+
+    {% if error %}
+        <div class="auth-error">{{ error }}</div>
+    {% endif %}
+
+    <form class="auth-form" method="post">
+        <div class="auth-field">
+            <label for="fio_username">FIO Benutzername</label>
+            <input type="text" id="fio_username" name="fio_username" required autofocus autocomplete="username">
+        </div>
+
+        <div class="auth-field">
+            <label for="fio_api_token">FIO API Token</label>
+            <input type="password" id="fio_api_token" name="fio_api_token" required autocomplete="new-password">
+        </div>
+
+        <button type="submit" class="auth-submit">Registrieren</button>
+    </form>
+
+    <div class="auth-link">
+        Bereits registriert? <a href="{{ path('login') }}">Anmelden</a>
+    </div>
+</div>
+{% endblock %}

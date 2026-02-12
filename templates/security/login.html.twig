@@ -1,0 +1,33 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Anmelden{% endblock %}
+
+{% block body %}
+<div class="auth-container">
+    <h1>Shipping Schedule</h1>
+
+    {% if error %}
+        <div class="auth-error">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
+    {% endif %}
+
+    <form class="auth-form" method="post">
+        <div class="auth-field">
+            <label for="fio_username">FIO Benutzername</label>
+            <input type="text" id="fio_username" name="_fio_username" value="{{ last_username }}" required autofocus autocomplete="username">
+        </div>
+
+        <div class="auth-field">
+            <label for="fio_api_token">FIO API Token</label>
+            <input type="password" id="fio_api_token" name="_fio_api_token" required autocomplete="current-password">
+        </div>
+
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+        <button type="submit" class="auth-submit">Anmelden</button>
+    </form>
+
+    <div class="auth-link">
+        Noch kein Konto? <a href="{{ path('register') }}">Registrieren</a>
+    </div>
+</div>
+{% endblock %}

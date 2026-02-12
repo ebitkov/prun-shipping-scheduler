@@ -4,7 +4,13 @@
 
 {% block body %}
 <div class="container">
-    <h1>Shipping Schedule</h1>
+    <div class="dashboard-header">
+        <h1>Shipping Schedule</h1>
+        <div class="dashboard-header__user">
+            {{ app.user.fioUsername }}
+            <a href="{{ path('logout') }}">Abmelden</a>
+        </div>
+    </div>
 
     <div id="loading" class="loading">
         <ul id="planet-progress" class="planet-progress">

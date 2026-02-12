@@ -2,7 +2,7 @@
 
 namespace App\Command;
 
-use App\Service\FioApiClientInterface;
+use App\Service\FioApiClientFactory;
 use App\Service\MaterialRegistry;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -18,15 +18,17 @@ use Symfony\Component\Console\Output\OutputInterface;
 final class FioInventoryCommand extends Command
 {
     public function __construct(
-        private readonly FioApiClientInterface $fioApiClient,
-        private readonly MaterialRegistry $materialRegistry,
+        private readonly FioApiClientFactory $fioApiClientFactory,
     ) {
         parent::__construct();
     }
 
     protected function configure(): void
     {
-        $this->addOption('planet', null, InputOption::VALUE_REQUIRED, 'Planet name or natural ID');
+        $this
+            ->addOption('planet', null, InputOption::VALUE_REQUIRED, 'Planet name or natural ID')
+            ->addOption('api-key', null, InputOption::VALUE_REQUIRED, 'FIO API key (fallback: FIO_API_KEY env)')
+            ->addOption('username', null, InputOption::VALUE_REQUIRED, 'FIO username (fallback: FIO_USERNAME env)');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -40,7 +42,21 @@ final class FioInventoryCommand extends Command
             return Command::FAILURE;
         }
 
-        $storage = $this->fioApiClient->getStorage($planet);
+        /** @var string $apiKey */
+        $apiKey = $input->getOption('api-key') ?? $_ENV['FIO_API_KEY'] ?? '';
+        /** @var string $username */
+        $username = $input->getOption('username') ?? $_ENV['FIO_USERNAME'] ?? '';
+
+        if ($apiKey === '' || $username === '') {
+            $output->writeln('<error>Provide --api-key and --username options or set FIO_API_KEY and FIO_USERNAME env vars.</error>');
+
+            return Command::FAILURE;
+        }
+
+        $fioApiClient = $this->fioApiClientFactory->createWithCredentials($apiKey, $username);
+        $materialRegistry = new MaterialRegistry($fioApiClient);
+
+        $storage = $fioApiClient->getStorage($planet);
 
         if ($storage->items === []) {
             $output->writeln('<comment>No items found in storage on ' . $planet . '.</comment>');
@@ -56,7 +72,7 @@ final class FioInventoryCommand extends Command
         $totalMass = 0.0;
 
         foreach ($storage->items as $item) {
-            $material = $this->materialRegistry->get($item->materialTicker);
+            $material = $materialRegistry->get($item->materialTicker);
             $itemVolume = $item->materialAmount * $material->volume;
             $itemMass = $item->materialAmount * $material->weight;
             $totalVolume += $itemVolume;

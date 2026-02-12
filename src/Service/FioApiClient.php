@@ -83,7 +83,9 @@ final class FioApiClient implements FioApiClientInterface
      */
     public function getPlayerPlanets(): array
     {
-        return $this->fioDynamicData->get('fio_player_planets', function (ItemInterface $item): array {
+        $cacheKey = 'fio_' . $this->fioUsername . '_player_planets';
+
+        return $this->fioDynamicData->get($cacheKey, function (ItemInterface $item): array {
             /** @var list<string> $data */
             $data = $this->request('GET', "/production/planets/{$this->fioUsername}", auth: true);
 
@@ -97,7 +99,7 @@ final class FioApiClient implements FioApiClientInterface
      */
     public function getProductionLines(string $planet): array
     {
-        $cacheKey = 'fio_production_' . str_replace(['{', '}', '(', ')', '/', '\\', '@', ':'], '_', $planet);
+        $cacheKey = 'fio_' . $this->fioUsername . '_production_' . str_replace(['{', '}', '(', ')', '/', '\\', '@', ':'], '_', $planet);
 
         return $this->fioDynamicData->get($cacheKey, function (ItemInterface $item) use ($planet): array {
             $response = $this->requestRaw(
@@ -122,7 +124,7 @@ final class FioApiClient implements FioApiClientInterface
      */
     public function getStorage(string $planet): Storage
     {
-        $cacheKey = 'fio_storage_' . str_replace(['{', '}', '(', ')', '/', '\\', '@', ':'], '_', $planet);
+        $cacheKey = 'fio_' . $this->fioUsername . '_storage_' . str_replace(['{', '}', '(', ')', '/', '\\', '@', ':'], '_', $planet);
 
         return $this->fioDynamicData->get($cacheKey, function (ItemInterface $item) use ($planet): Storage {
             $response = $this->requestRaw(
