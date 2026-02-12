@@ -272,6 +272,93 @@ final class ShippingCalculatorTest extends TestCase
         self::assertSame(61, $diff);
     }
 
+    public function testExportPartialStockNotDueToday(): void
+    {
+        // Produces 100 AL/day, shipload is 1000 AL (WCB)
+        // Stock has 364 AL -> need 636 more -> 6.36 days
+        // With ceil(), daysInt = 7 (not 0 from floor)
+        $productionLines = [
+            new ProductionLine('ZV-759c', 'Deimos', 'smelter', [
+                new ProductionOrder(
+                    inputs: [],
+                    outputs: [new RecipeIO('AL', 100.0)],
+                    durationMs: 86_400_000, // 1 day -> 100 AL/day
+                    completedPercentage: 0.0,
+                    isHalted: false,
+                    recurring: true,
+                    startedEpochMs: null,
+                ),
+            ]),
+        ];
+
+        $storage = new Storage([
+            new StorageItem('AL', 364.0),
+        ]);
+
+        $calculator = $this->buildCalculator(
+            planets: ['ZV-759c'],
+            productionLines: ['ZV-759c' => $productionLines],
+            storages: ['ZV-759c' => $storage],
+            materials: [
+                new Material('AL', 'Aluminium', 2.7, 1.0),
+            ],
+        );
+
+        $tasks = $calculator->calculateAllTasks();
+
+        self::assertCount(1, $tasks);
+        $task = $tasks[0];
+        self::assertSame(ShippingTaskType::Export, $task->type);
+        self::assertSame(1000, $task->materials['AL']);
+
+        $today = new \DateTimeImmutable('today');
+        $diff = (int) $today->diff($task->dueDate)->days;
+        // 636 remaining / 100 per day = 6.36 days -> ceil = 7
+        self::assertSame(7, $diff, 'Export with partial stock should not be due today');
+    }
+
+    public function testExportDueTodayWhenFullShiploadInStock(): void
+    {
+        // Produces 100 AL/day, shipload is 1000 AL (WCB)
+        // Stock has 1000+ AL -> daysUntilDue = 0.0 -> ceil(0.0) = 0 -> today
+        $productionLines = [
+            new ProductionLine('ZV-759c', 'Deimos', 'smelter', [
+                new ProductionOrder(
+                    inputs: [],
+                    outputs: [new RecipeIO('AL', 100.0)],
+                    durationMs: 86_400_000,
+                    completedPercentage: 0.0,
+                    isHalted: false,
+                    recurring: true,
+                    startedEpochMs: null,
+                ),
+            ]),
+        ];
+
+        $storage = new Storage([
+            new StorageItem('AL', 1200.0),
+        ]);
+
+        $calculator = $this->buildCalculator(
+            planets: ['ZV-759c'],
+            productionLines: ['ZV-759c' => $productionLines],
+            storages: ['ZV-759c' => $storage],
+            materials: [
+                new Material('AL', 'Aluminium', 2.7, 1.0),
+            ],
+        );
+
+        $tasks = $calculator->calculateAllTasks();
+
+        self::assertCount(1, $tasks);
+        $task = $tasks[0];
+        self::assertSame(ShippingTaskType::Export, $task->type);
+
+        $today = new \DateTimeImmutable('today');
+        $diff = (int) $today->diff($task->dueDate)->days;
+        self::assertSame(0, $diff, 'Export should be due today when full shipload is in stock');
+    }
+
     /**
      * @param string[] $planets
      * @param array<string, ProductionLine[]> $productionLines

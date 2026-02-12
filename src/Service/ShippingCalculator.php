@@ -44,7 +44,7 @@ final class ShippingCalculator
     /**
      * @return ShippingTask[]
      */
-    private function calculateForPlanet(string $planetId): array
+    public function calculateForPlanet(string $planetId): array
     {
         $productionLines = $this->fioApiClient->getProductionLines($planetId);
 
@@ -203,7 +203,7 @@ final class ShippingCalculator
             }
         }
 
-        $daysInt = max(0, (int) floor($daysUntilDue));
+        $daysInt = max(0, (int) ($type === ShippingTaskType::Export ? ceil($daysUntilDue) : floor($daysUntilDue)));
         $dueDate = $today->modify("+{$daysInt} days");
 
         return new ShippingTask(

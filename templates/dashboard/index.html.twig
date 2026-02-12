@@ -6,57 +6,12 @@
 <div class="container">
     <h1>Shipping Schedule</h1>
 
-    {% if grouped_tasks is empty %}
-        <p class="empty">No shipping tasks scheduled.</p>
-    {% else %}
-        {% for label, tasks in grouped_tasks %}
-            <section class="day-group">
-                <h2 class="day-label">{{ label }}</h2>
-                <ul class="task-list">
-                    {% for task in tasks %}
-                        {% if task.type.value == 'Import' %}
-                            {% set xit_act =
-                                '{"actions":['
-                                ~ '{"group":"A1","exchange":"AI1","priceLimits":{},"buyPartial":false,"useCXInv":true,"name":"BuyItems","type":"CX Buy"},'
-                                ~ '{"type":"MTRA","name":"TransferAction","group":"A1","origin":"Antares Station Warehouse","dest":"Configure on Execution"}'
-                                ~ '],"global":{"name":' ~ ('Import to ' ~ task.planetName)|json_encode
-                                ~ '},"groups":[{"type":"Manual","name":"A1","materials":' ~ task.materials|json_encode ~ '}]}'
-                            %}
-                        {% endif %}
-                        {% set total_price = 0 %}
-                        {% for ticker, amount in task.materials %}
-                            {% if task.type.value == 'Import' and prices[ticker] is defined %}
-                                {% set total_price = total_price + amount * prices[ticker].ask %}
-                            {% elseif task.type.value == 'Export' and prices[ticker] is defined %}
-                                {% set total_price = total_price + amount * prices[ticker].bid %}
-                            {% endif %}
-                        {% endfor %}
-                        <li class="task task--{{ task.type.value | lower }}"
-                            {% if task.type.value == 'Import' %}data-xit-act="{{ xit_act }}"{% endif %}
-                        >
-                            <span class="task__ship">[{{ task.shipClass.value }}]</span>
-                            <span class="task__type">{{ task.type.value }}</span>
-                            <span class="task__materials">
-                                {%- for ticker, amount in task.materials -%}
-                                    {%- if not loop.first %}, {% endif -%}
-                                    {{ amount | number_format(0, ',', '.') }}&nbsp;{{ ticker }}
-                                {%- endfor -%}
-                            </span>
-                            {% if task.type.value == 'Import' %}
-                                <span class="task__direction">to</span>
-                            {% else %}
-                                <span class="task__direction">from</span>
-                            {% endif %}
-                            <span class="task__planet">{{ task.planetName }}</span>
-                            {% if total_price > 0 %}
-                                <span class="task__price">~{{ total_price | number_format(0, ',', '.') }}</span>
-                            {% endif %}
-                        </li>
-                    {% endfor %}
-                </ul>
-            </section>
-        {% endfor %}
-    {% endif %}
+    <div id="loading" class="loading">
+        <div class="loading__spinner"></div>
+        <p class="loading__text">Verbinde...</p>
+    </div>
+
+    <div id="task-container"></div>
 </div>
 
 <div id="xit-act-modal" class="modal-overlay modal--hidden">
