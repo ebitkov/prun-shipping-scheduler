@@ -13,6 +13,7 @@
         "symfony/flex": "^2",
         "symfony/framework-bundle": "8.0.*",
         "symfony/http-client": "^8.0",
+        "symfony/monolog-bundle": "^4.0",
         "symfony/runtime": "8.0.*",
         "symfony/twig-bundle": "^8.0",
         "symfony/yaml": "8.0.*"
@@ -76,6 +77,9 @@
         "phpunit/phpunit": "^13.0",
         "squizlabs/php_codesniffer": "^4.0",
         "symfony/browser-kit": "8.0.*",
-        "symfony/css-selector": "8.0.*"
+        "symfony/css-selector": "8.0.*",
+        "symfony/debug-bundle": "8.0.*",
+        "symfony/stopwatch": "8.0.*",
+        "symfony/web-profiler-bundle": "8.0.*"
     }
 }
